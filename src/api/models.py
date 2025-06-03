@@ -6,11 +6,20 @@ from typing import List
 db = SQLAlchemy()
 
 # many-to-many relationship between User and Person
-# UserPerson = Table('user_person_favorites',
-#                     db.metadata,
-#                     Column('user_id', ForeignKey('user.id'), primary_key=True, nullable=False),
-#                     Column('person_id', ForeignKey('person.id'), primary_key=True, nullable=False),
-#                     )
+User_Person_Favorites = Table(
+    'user_person_favorites',
+    db.metadata,
+    Column('user_id', ForeignKey('user.id'), primary_key=True, nullable=False),
+    Column('person_id', ForeignKey('person.id'), primary_key=True, nullable=False),
+)
+
+# many-to-many relationship between User and Planet
+User_Planet_Favorites = Table(
+    'user_planet_favorites',
+    db.metadata,
+    Column('user_id', ForeignKey('user.id'), primary_key=True, nullable=False),
+    Column('planet_id', ForeignKey('planet.id'), primary_key=True, nullable=False),
+)
 
 
 class User(db.Model):
@@ -18,10 +27,11 @@ class User(db.Model):
     username: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
 
     # relationships
-    user_person: Mapped[list['Favorite_Character']] = relationship(back_populates='user')
+    favorite_people: Mapped[list['Person']] = relationship(secondary=User_Person_Favorites, back_populates='favorited_by_user')
+    favorite_planet: Mapped[list['Planet']] = relationship(secondary=User_Planet_Favorites, back_populates='favorited_by_user')
 
     def __repr__(self):
-        return f'<User "{self.username}">'
+        return '<User %r>' % self.username
 
     def serialize(self):
         return {
@@ -37,10 +47,10 @@ class Person(db.Model):
     hair_color: Mapped[str] = mapped_column(String(120), nullable=True)
 
     # relationships
-    user_person: Mapped[list['Favorite_Character']] = relationship(back_populates='person')
+    favorited_by_user: Mapped[list['User']] = relationship(secondary=User_Person_Favorites, back_populates='favorite_people')
 
     def __repr__(self):
-        return '<User %r>' % self.username
+        return '<Person %r>' % self.name
 
     def serialize(self):
         return {
@@ -50,19 +60,21 @@ class Person(db.Model):
         }
 
 
-class Favorite_Character(db.Model):
+
+class Planet(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
-    # test: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    terrain: Mapped[str] = mapped_column(String(120), nullable=False)
 
     # relationships
-    user_id: Mapped[int] = mapped_column(ForeignKey('user.id'), nullable=False)
-    user: Mapped[list['User']] = relationship('User')
-    person_id: Mapped[int] = mapped_column(ForeignKey('person.id'), nullable=False)
-    person: Mapped[list['Person']] = relationship('Person')
+    favorited_by_user: Mapped[list['User']] = relationship(secondary=User_Planet_Favorites, back_populates='favorite_planet')
+
+    def __repr__(self):
+        return '<Planet %r>' % self.name
 
     def serialize(self):
         return {
-            "id": self.id,
-            "user_id": self.user_id,
-            "person_id": self.person_id,
+            'id': self.id,
+            'name': self.name,
+            'terrain': self.terrain,
         }
